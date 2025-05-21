@@ -8,7 +8,7 @@ Combines CNN-based detection with a physics-based prediction module and fusion f
 - `fusion/`: Combines detection & prediction
 - `training/`: Training scripts and utils
 - `inference/`: Run tracking & visualize
-- `data/`: Synthetic data generator
+- `data/`: dataset used for training and testing the model
 
 ### 🚀 Goals
 - Build an efficient, interpretable tracking system
