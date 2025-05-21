@@ -51,6 +51,7 @@ torch.save(model.state_dict(), "tinyCNN_model.pth")
 '''
 Evlaution and Visualization
 '''
+import numpy as np
 model.eval()
 predicted_positions = []
 true_positions = []
@@ -60,8 +61,8 @@ with torch.no_grad():
         predicted_positions.append(outputs.squeeze().numpy())
         true_positions.append(labels.squeeze().numpy())
 
-predicted_positions = torch.tensor(predicted_positions)
-true_positions = torch.tensor(true_positions)
+predicted_positions = np.array(predicted_positions)
+true_positions = np.array(true_positions)
 
 # Visualize the predicted and true positions
 plt.figure(figsize=(6, 6))
