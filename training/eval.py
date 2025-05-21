@@ -10,7 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from data.synthetic_dataset import SyntheticDotDataset
 from models.tinyCNN import TinyCNNRegressor
 
-# Load test data
+# Load test data - 50 sequences of 10 frames each for total of 500 frames.
 test_dataset = SyntheticDotDataset(num_sequences=50, frames_per_seq=10)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
