@@ -19,7 +19,7 @@ test_dataset = SyntheticDotDataset(num_sequences=5, frames_per_seq=20)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 # Lambda for fusion
-lambda_cnn = 0.6  # 0.0 = only physics, 1.0 = only CNN
+lambda_cnn = 0.5  # 0.0 = only physics, 1.0 = only CNN
 
 cnn_predictions = []
 fused_predictions = []
@@ -71,4 +71,6 @@ plt.legend()
 plt.axis("equal")
 plt.grid(True)
 plt.show()
+# Save the plot
 plt.savefig("trajectory_plot.png")
+plt.close()
