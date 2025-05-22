@@ -67,10 +67,16 @@ test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 img_seq, pos1, pos2, target = next(iter(test_loader))
 with torch.no_grad():
     pred, _, _, _ = model(img_seq, pos1, pos2)
+    true_positions = target.cpu().detach().tolist()
+    pred_positions = pred.cpu().detach().tolist()
+
+# Convert lists to numpy arrays
+true_positions = np.array(true_positions).squeeze()
+pred_positions = np.array(pred_positions).squeeze()
 
 # Convert tensors to numpy
-true_positions = np.array(target.tolist())
-pred_positions = np.array(pred.tolist())
+    # true_positions = np.array(target.tolist())
+    # pred_positions = np.array(pred.tolist())
 
 # Animation setup
 # fig, ax = plt.subplots()
@@ -103,35 +109,80 @@ ax.set_title("Tracking: Predicted vs Ground Truth")
 ax.grid(True)
 
 # Initialize empty plots
-true_dot, = ax.plot([], [], 'go', label="Ground Truth", markersize=10)
-pred_dot, = ax.plot([], [], 'ro', label="Prediction", markersize=10)
+true_dot, = ax.plot([], [], 'go-', label="Ground Truth", markersize=10)
+pred_dot, = ax.plot([], [], 'ro--', label="Prediction", markersize=10)
+true_point, = ax.plot([], [], 'go', markersize=10, label="Current True Position")
+pred_point, = ax.plot([], [], 'ro', markersize=10, label="Current Predicted Position")
 ax.legend()
 
 # Initialize function (required for blitting)
 def init():
     true_dot.set_data([], [])
     pred_dot.set_data([], [])
-    return true_dot, pred_dot
+    true_point.set_data([], [])
+    pred_point.set_data([], [])
+    return true_dot, pred_dot, true_point, pred_point
+
+# def update(frame):
+#     x_true, y_true = true_positions[frame]
+#     x_pred, y_pred = pred_positions[frame]
+#     true_dot.set_data([x_true], [y_true])
+#     pred_dot.set_data([x_pred], [y_pred])
+#     return true_dot, pred_dot
+
+def animate(frame):
+    # Plot trajectory up to current frame
+    true_dot.set_data(true_positions[:frame+1, 0], true_positions[:frame+1, 1])
+    pred_dot.set_data(pred_positions[:frame+1, 0], pred_positions[:frame+1, 1])
+    # Update current positions
+    true_point.set_data([true_positions[frame, 0]], [true_positions[frame, 1]])
+    pred_point.set_data([pred_positions[frame, 0]], [pred_positions[frame, 1]])
+    return true_dot, pred_dot, true_point, pred_point
+
+# def update(frame):
+#     ax.clear()
+#     ax.set_xlim(0, 64)
+#     ax.set_ylim(0, 64)
+#     ax.set_title(f"Frame {frame+1}")
+#     ax.plot(*true_positions[frame], 'go', label='Ground Truth')  # green
+#     ax.plot(*pred_positions[frame], 'ro', label='Prediction')    # red
+#     ax.legend(loc='upper right')
+#     return ax
 
 def update(frame):
-    x_true, y_true = true_positions[frame]
-    x_pred, y_pred = pred_positions[frame]
-    true_dot.set_data([x_true], [y_true])
-    pred_dot.set_data([x_pred], [y_pred])
-    return true_dot, pred_dot
+    ax.clear()
+    ax.set_xlim(0, 64)
+    ax.set_ylim(0, 64)
+    ax.grid(True)
+    
+    # Plot full trajectories with opacity
+    ax.plot(true_positions[:frame+1, 0], true_positions[:frame+1, 1], 
+            'g-', alpha=0.5, label='Ground Truth Path')
+    ax.plot(pred_positions[:frame+1, 0], pred_positions[:frame+1, 1], 
+            'r--', alpha=0.5, label='Predicted Path')
+    
+    # Plot current positions
+    ax.plot(true_positions[frame, 0], true_positions[frame, 1], 
+            'go', markersize=10, label='Current True')
+    ax.plot(pred_positions[frame, 0], pred_positions[frame, 1], 
+            'ro', markersize=10, label='Current Predicted')
+    
+    ax.set_title(f'Frame {frame+1}/{len(true_positions)}')
+    ax.legend(loc='upper right')
 
 # Create animation with init_func
 ani = animation.FuncAnimation(
     fig, 
     update,
-    init_func=init,
+    
     frames=len(true_positions),
     interval=200,
-    blit=True,
+    blit=False,
     repeat=True
 )
 
 # Save animation
-plt.rcParams['animation.writer'] = 'pillow'
-ani.save("tracking_animation.gif", writer='pillow', fps=5)
-plt.show()
+# plt.rcParams['animation.writer'] = 'pillow'
+ani.save("tracking_animation2.gif", writer='pillow', fps=2,
+         progress_callback=lambda i, n: print(f'Saving frame {i+1}/{n}'))
+plt.close()
