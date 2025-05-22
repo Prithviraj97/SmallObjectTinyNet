@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from data.synthetic_dataset import SyntheticTrackingDataset
+from data.synthetic_dataset import SyntheticDotDataset
 from models.fusionNet import FusionNet, fusion_loss
 
 # Define synthetic dataset
@@ -37,9 +37,18 @@ class SyntheticTrackingDataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
+    # def __getitem__(self, idx):
+    #     img, pos1, pos2, target = self.samples[idx]
+    #     return torch.tensor(img).unsqueeze(0), torch.tensor(pos1), torch.tensor(pos2), torch.tensor(target)
+
     def __getitem__(self, idx):
         img, pos1, pos2, target = self.samples[idx]
-        return torch.tensor(img).unsqueeze(0), torch.tensor(pos1), torch.tensor(pos2), torch.tensor(target)
+        return (
+            torch.tensor(img, dtype=torch.float32).unsqueeze(0),
+            torch.tensor(pos1, dtype=torch.float32),
+            torch.tensor(pos2, dtype=torch.float32),
+            torch.tensor(target, dtype=torch.float32)
+        )
 
 # Create dataset and dataloader
 dataset = SyntheticTrackingDataset()
@@ -68,6 +77,11 @@ for epoch in range(epochs):
     lambda_values.append(fusion_model.lambda_t.item())
     loss_values.append(avg_loss)
     print(f"Epoch {epoch+1}: Loss={avg_loss:.4f}, Lambda={fusion_model.lambda_t.item():.4f}")
+
+# Save results for analysis
+torch.save(fusion_model.state_dict(), "fusion_model_small.pth")
+torch.save(loss_values, "fusion_loss_history.pt")
+torch.save(lambda_values, "fusion_lambda_history.pt")
 
 # Plotting
 plt.figure(figsize=(10, 4))
