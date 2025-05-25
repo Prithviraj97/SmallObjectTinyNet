@@ -7,8 +7,8 @@ import random
 def generate_synthetic_dataset(
     save_dir="synthetic_dataset",
     num_frames=1000,
-    image_size=(64, 64),
-    dot_radius=2,
+    image_size=(96, 96),
+    dot_radius=2.5,
     initial_pos=(10, 10),
     velocity=(1, 1),
     jitter=0.5,
