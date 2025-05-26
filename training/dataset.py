@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from PIL import Image
 import pandas as pd
 import os
+import numpy as np
 
 class DotDataset(Dataset):
     def __init__(self, image_dir, label_file, transform=None):
@@ -16,7 +17,7 @@ class DotDataset(Dataset):
     def __getitem__(self, idx):
         row = self.labels.iloc[idx]
         img_path = os.path.join(self.image_dir, row['filename'])
-        image = Image.open(img_path).convert('L')  # grayscale
+        image = Image.open(img_path).convert('L') 
         if self.transform:
             image = self.transform(image)
         else:
