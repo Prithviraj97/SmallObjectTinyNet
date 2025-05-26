@@ -32,7 +32,7 @@ def get_loader(split):
     dataset = DotDataset(
         image_dir=f'synthetic_dataset/{split}/images',
         label_file=f'synthetic_dataset/{split}/labels.csv',
-        transform=transform
+        transform=None
     )
     return DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=(split == 'train'))
 
