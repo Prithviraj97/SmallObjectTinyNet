@@ -24,9 +24,9 @@ import torch.nn.functional as F
 #         out = self.fc2(x)  # [batch, 2]
 #         return out
 
-class TinyCNN(nn.Module):
+class TinyCNNRegressor(nn.Module):
     def __init__(self):
-        super(TinyCNN, self).__init__()
+        super(TinyCNNRegressor, self).__init__()
         self.cnn = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
