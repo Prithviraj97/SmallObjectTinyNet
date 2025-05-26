@@ -11,7 +11,7 @@ from data.synthetic_dataset import SyntheticDotDataset
 from models.tinyCNN import TinyCNNRegressor  
 
 # Hyperparameters
-epochs = 20
+epochs = 32
 batch_size = 16
 lr = 1e-3
 
@@ -51,27 +51,27 @@ torch.save(model.state_dict(), "tinyCNN_model.pth")
 '''
 Evlaution and Visualization
 '''
-import numpy as np
-model.eval()
-predicted_positions = []
-true_positions = []
-with torch.no_grad():
-    for imgs, labels in test_loader:
-        outputs = model(imgs)
-        predicted_positions.append(outputs.squeeze().numpy())
-        true_positions.append(labels.squeeze().numpy())
+# import numpy as np
+# model.eval()
+# predicted_positions = []
+# true_positions = []
+# with torch.no_grad():
+#     for imgs, labels in test_loader:
+#         outputs = model(imgs)
+#         predicted_positions.append(outputs.squeeze().numpy())
+#         true_positions.append(labels.squeeze().numpy())
 
-predicted_positions = np.array(predicted_positions)
-true_positions = np.array(true_positions)
+# predicted_positions = np.array(predicted_positions)
+# true_positions = np.array(true_positions)
 
-# Visualize the predicted and true positions
-plt.figure(figsize=(6, 6))
-plt.scatter(true_positions[:, 0], true_positions[:, 1], label='True', c='blue', alpha=0.6)
-plt.scatter(predicted_positions[:, 0], predicted_positions[:, 1], label='Predicted', c='red', marker='x')
-plt.title("Predicted vs Actual Object Positions")
-plt.xlabel("x position")
-plt.ylabel("y position")
-plt.legend()
-plt.grid(True)
-plt.axis("equal")
-plt.show()
+# # Visualize the predicted and true positions
+# plt.figure(figsize=(6, 6))
+# plt.scatter(true_positions[:, 0], true_positions[:, 1], label='True', c='blue', alpha=0.6)
+# plt.scatter(predicted_positions[:, 0], predicted_positions[:, 1], label='Predicted', c='red', marker='x')
+# plt.title("Predicted vs Actual Object Positions")
+# plt.xlabel("x position")
+# plt.ylabel("y position")
+# plt.legend()
+# plt.grid(True)
+# plt.axis("equal")
+# plt.show()
