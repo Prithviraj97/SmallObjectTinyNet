@@ -3,7 +3,6 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from dataset import DotDataset 
-import os
 import sys
 from pathlib import Path
 
@@ -32,7 +31,7 @@ def get_loader(split):
     dataset = DotDataset(
         image_dir=f'synthetic_dataset/{split}/images',
         label_file=f'synthetic_dataset/{split}/labels.csv',
-        transform=None
+        transform=transform
     )
     return DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=(split == 'train'))
 
