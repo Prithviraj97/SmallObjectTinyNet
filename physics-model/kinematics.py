@@ -58,6 +58,16 @@ predicted_positions = np.array(predicted_positions)
 mse = np.mean((ground_truth_positions - predicted_positions)**2)
 print(f"Physics Tracker MSE: {mse:.5f}")
 
+#save results to CSV
+results_df = pd.DataFrame({
+    'ground_truth_x': ground_truth_positions[:, 0],
+    'ground_truth_y': ground_truth_positions[:, 1],
+    'predicted_x': predicted_positions[:, 0],
+    'predicted_y': predicted_positions[:, 1]
+})
+
+results_df.to_csv("physics_tracker_results.csv", index=False)
+
 # Plotting predicted vs true
 # plt.figure(figsize=(6,6))
 # plt.scatter(ground_truth_positions[:, 0], ground_truth_positions[:, 1], 'g-', label='Ground Truth')
