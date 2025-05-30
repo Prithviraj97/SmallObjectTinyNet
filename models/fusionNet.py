@@ -9,23 +9,45 @@ class PhysicsModule(nn.Module):
 
 # Tiny CNN-based predictor
 class TinyCNN(nn.Module):
+    # def __init__(self):
+    #     super(TinyCNN, self).__init__()
+    #     self.cnn = nn.Sequential(
+    #         nn.Conv2d(1, 8, 3, padding=1),  # (B, 1, 64, 64) -> (B, 8, 64, 64)
+    #         nn.ReLU(),
+    #         nn.MaxPool2d(2),               # -> (B, 8, 32, 32)
+    #         nn.Conv2d(8, 16, 3, padding=1),
+    #         nn.ReLU(),
+    #         nn.MaxPool2d(2),               # -> (B, 16, 16, 16)
+    #         nn.Flatten(),                  # -> (B, 4096)
+    #         nn.Linear(16 * 16 * 16, 64),
+    #         nn.ReLU(),
+    #         nn.Linear(64, 2)               # Output: (x, y)
+    #     )
+
+    # def forward(self, x):
+    #     return self.cnn(x)
     def __init__(self):
         super(TinyCNN, self).__init__()
         self.cnn = nn.Sequential(
-            nn.Conv2d(1, 8, 3, padding=1),  # (B, 1, 64, 64) -> (B, 8, 64, 64)
+            nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.MaxPool2d(2),               # -> (B, 8, 32, 32)
-            nn.Conv2d(8, 16, 3, padding=1),
+            nn.MaxPool2d(2),  # 48x48
+            nn.Conv2d(16, 32, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.MaxPool2d(2),               # -> (B, 16, 16, 16)
-            nn.Flatten(),                  # -> (B, 4096)
-            nn.Linear(16 * 16 * 16, 64),
+            nn.MaxPool2d(2),  # 24x24
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Linear(64, 2)               # Output: (x, y)
+            nn.MaxPool2d(2),  # 12x12
+        )
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 12 * 12, 128),
+            nn.ReLU(),
+            nn.Linear(128, 2)  # output x, y position
         )
 
     def forward(self, x):
-        return self.cnn(x)
+        return self.fc(self.cnn(x))
 
 # Learnable Fusion Network
 class FusionNet(nn.Module):
