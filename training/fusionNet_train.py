@@ -44,7 +44,7 @@ fusion_model = FusionNet()
 optimizer = optim.Adam(fusion_model.parameters(), lr=0.001)
 
 # Training loop
-epochs = 10
+epochs = 5
 lambda_values = []
 loss_values = []
 
