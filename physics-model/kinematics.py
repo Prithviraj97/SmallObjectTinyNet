@@ -45,8 +45,8 @@ for i, (image, target) in enumerate(test_loader):
         prediction = [2 * p1 - p2 for p1, p2 in zip(prev1, prev2)]
         prediction = torch.tensor(prediction, dtype=target.dtype)
 
-    predicted_positions.append(prediction.tolist())
-    buffer.append(target)
+        predicted_positions.append(prediction.tolist())
+        buffer.append(target)
 
 # Convert to arrays
 # ground_truth_positions = np.array(ground_truth_positions)
@@ -66,7 +66,7 @@ results_df = pd.DataFrame({
     'predicted_y': predicted_positions[:, 1]
 })
 
-results_df.to_csv("physics_tracker_results.csv", index=False)
+results_df.to_csv("physics_tracker_Improved.csv", index=False)
 
 # Plotting predicted vs true
 # plt.figure(figsize=(6,6))

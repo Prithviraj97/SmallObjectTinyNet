@@ -112,11 +112,10 @@ optimizer = optim.Adam(fusion_model.parameters(), lr=LEARNING_RATE)
 # ---------------------------
 # Training Loop
 # ---------------------------
-epochs = 5
 lambda_values = []
 loss_values = []
 
-for epoch in range(epochs):
+for epoch in range(EPOCHS):
     fusion_model.train()
     total_loss = 0.0
     pos_queue = deque(maxlen=3)
@@ -144,6 +143,12 @@ for epoch in range(epochs):
     lambda_values.append(fusion_model.lambda_t.item())
     loss_values.append(avg_loss)
     print(f"Epoch {epoch+1}: Loss={avg_loss:.4f}, Lambda={fusion_model.lambda_t.item():.4f}")
+
+# Save the trained model
+torch.save(fusion_model.state_dict(), 'fusionNet_model.pth')
+# Save loss and lambda history
+torch.save(loss_values, 'fusion_loss_history.pt')
+torch.save(lambda_values, 'fusion_lambda_history.pt')
 
 #--------------------------
 #Evaluation on Test Set
