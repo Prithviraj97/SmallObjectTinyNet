@@ -144,3 +144,10 @@ for epoch in range(epochs):
     lambda_values.append(fusion_model.lambda_t.item())
     loss_values.append(avg_loss)
     print(f"Epoch {epoch+1}: Loss={avg_loss:.4f}, Lambda={fusion_model.lambda_t.item():.4f}")
+
+#--------------------------
+#Evaluation on Test Set
+#--------------------------
+fusion_model.eval()
+test_loader = get_loader('test')
+
