@@ -51,7 +51,7 @@ class TinyCNN(nn.Module):
 
 # Learnable Fusion Network
 class FusionNet(nn.Module):
-    def __init__(self, use_kl=True, lambda_0=0.5):
+    def __init__(self, use_kl=True, lambda_0=0.4):
         super(FusionNet, self).__init__()
         self.cnn_model = TinyCNN()
         self.physics = PhysicsModule()
