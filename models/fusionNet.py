@@ -69,7 +69,6 @@ class FusionNet(nn.Module):
 # Custom loss with KL regularization
 def fusion_loss(pred, target, lambda_t, lambda_0=0.5, beta=0.1, use_kl=True):
     mse = F.mse_loss(pred, target)
-
     if use_kl:
         eps = 1e-6
         lambda_clipped = torch.clamp(lambda_t, eps, 1 - eps)

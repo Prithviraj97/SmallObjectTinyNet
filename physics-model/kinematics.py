@@ -27,7 +27,7 @@ buffer = []
 
 for i, (image, target) in enumerate(test_loader):
     target = target.squeeze()
-    ground_truth_positions.append(target)
+    ground_truth_positions.append(target.tolist())
 
     # if len(buffer) < 2:
     #     # Not enough history to predict
@@ -37,16 +37,25 @@ for i, (image, target) in enumerate(test_loader):
     #     prediction = 2 * np.array(buffer[-1]) - np.array(buffer[-2])
 
     if len(buffer) < 2:
+        # prediction = target
+        # predicted_positions.append(prediction.tolist())
+        # buffer.append(prediction)
+        # buffer.append(target)
         prediction = target
     else:
-        prev1 = buffer[-1].tolist() if hasattr(buffer[-1], "tolist") else buffer[-1]
-        prev2 = buffer[-2].tolist() if hasattr(buffer[-2], "tolist") else buffer[-2]
+        # prev1 = buffer[-1].tolist() if hasattr(buffer[-1], "tolist") else buffer[-1]
+        # prev2 = buffer[-2].tolist() if hasattr(buffer[-2], "tolist") else buffer[-2]
+        # # Physics: x_t = 2x_{t-1} - x_{t-2}
+        # prediction = [2 * p1 - p2 for p1, p2 in zip(prev1, prev2)]
+        # prediction = torch.tensor(prediction, dtype=target.dtype)
+        prev1 = buffer[-1]
+        prev2 = buffer[-2]
         # Physics: x_t = 2x_{t-1} - x_{t-2}
-        prediction = [2 * p1 - p2 for p1, p2 in zip(prev1, prev2)]
-        prediction = torch.tensor(prediction, dtype=target.dtype)
+        prediction = 2 * torch.tensor(prev1) - torch.tensor(prev2)
+    predicted_positions.append(prediction.tolist())
 
-        predicted_positions.append(prediction.tolist())
-        buffer.append(target)
+    buffer.append(target.tolist())
+    # predicted_positions.append(prediction.tolist())
 
 # Convert to arrays
 # ground_truth_positions = np.array(ground_truth_positions)
@@ -66,7 +75,7 @@ results_df = pd.DataFrame({
     'predicted_y': predicted_positions[:, 1]
 })
 
-results_df.to_csv("physics_tracker_Improved.csv", index=False)
+results_df.to_csv("physics_tracker_New.csv", index=False)
 
 # Plotting predicted vs true
 # plt.figure(figsize=(6,6))

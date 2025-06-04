@@ -60,8 +60,8 @@ with torch.no_grad():
         pos1, pos2, target = pos_queue
         pred, _, _, _ = model(img, pos1, pos2)
 
-        pred_np = pred.squeeze().cpu().numpy()
-        target_np = target.squeeze().cpu().numpy()
+        pred_np = pred.squeeze().cpu().tolist()
+        target_np = target.squeeze().cpu().tolist()
 
         results.append({
             'image_index': idx,
