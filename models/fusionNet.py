@@ -55,7 +55,7 @@ class FusionNet(nn.Module):
         super(FusionNet, self).__init__()
         self.cnn_model = TinyCNN()
         self.physics = PhysicsModule()
-        self.lambda_t = nn.Parameter(torch.tensor(0.5))  # Learnable scalar
+        self.lambda_t = nn.Parameter(torch.tensor(0.5)) 
         self.use_kl = use_kl
         self.lambda_0 = lambda_0
 
