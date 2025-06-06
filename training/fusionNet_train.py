@@ -150,29 +150,5 @@ torch.save(fusion_model.state_dict(), 'fusionNet_model.pth')
 torch.save(loss_values, 'fusion_loss_history.pt')
 torch.save(lambda_values, 'fusion_lambda_history.pt')
 
-#--------------------------
-#Evaluation on Test Set
-#--------------------------
-# fusion_model.eval()
-# test_loader = get_loader('test')
-# predicted_positions = []
-# ground_truth_positions = []
-# with torch.no_grad():
-#     pos_queue = deque(maxlen=3)
-    
-#     for img, label in test_loader:
-#         img = img.to(DEVICE)
-#         label = label.to(DEVICE)
-
-#         pos_queue.append(label)
-
-#         if len(pos_queue) < 3:
-#             continue  # Need 3 steps to form pos1, pos2, target
-
-#         pos1, pos2, target = pos_queue
-
-#         pred, _, _, _ = fusion_model(img, pos1, pos2)
-#         predicted_positions.append(pred.cpu().numpy())
-#         ground_truth_positions.append(target.cpu().numpy())
 
 
