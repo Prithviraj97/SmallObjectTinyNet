@@ -163,6 +163,48 @@
     function downloadPlot() {
       Plotly.downloadImage(plotDiv, { format: 'png', filename: '3d_trajectory' });
     }
+
+    function lockView() {
+  const scene = plotDiv._fullLayout.scene._scene;
+  const camera = scene.getCamera();
+
+  // Update layout with fixed camera
+  layout.scene.camera = camera;
+  layout.dragmode = false;
+
+  Plotly.react('plot', [
+    dummy,
+    {
+      x, y, z,
+      mode: 'lines+markers',
+      type: 'scatter3d',
+      marker: { size: 4, color: 'green' },
+      line: { color: 'green' },
+      name: 'Trajectory'
+    }
+  ], layout);
+}
+
+function downloadPlot(format = 'png') {
+  Plotly.downloadImage(plotDiv, {
+    format: format,
+    filename: '3d_trajectory',
+    width: 1000,
+    height: 800
+  });
+}
+
+
+// function downloadPlot(format = 'png') {
+//   Plotly.downloadImage(plotDiv, {
+//     format: format,
+//     filename: '3d_trajectory',
+//     width: 1000,
+//     height: 800
+//   });
+// }
+
+
   </script>
 </body>
 </html>
