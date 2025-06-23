@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Trajectory Drawer</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; text-align: center; }
+    #plot { width: 100vw; height: 90vh; cursor: crosshair; }
+    #controls { margin: 10px; }
+    button { margin: 0 5px; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+
+<h2>Draw a 3D Trajectory</h2>
+<div id="plot"></div>
+<div id="controls">
+  <button onclick="clearPlot()">Clear</button>
+  <button onclick="lockView()">Fix Orientation & Start Drawing</button>
+  <button onclick="downloadPlot('png')">Save as PNG</button>
+  <button onclick="downloadPlot('svg')">Save as SVG</button>
+</div>
+
+<script>
+  const plotDiv = document.getElementById('plot');
+
+  let x = [], y = [], z = [];
+  let drawing = false;
+  let viewLocked = false;
+
+  const layout = {
+    scene: {
+      xaxis: { title: 'X (Width)', range: [0, 20] },
+      yaxis: { title: 'Y (Height)', range: [0, 6] },
+      zaxis: { title: 'Z (Depth)', range: [0, 40] },
+      camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+    },
+    dragmode: 'orbit',
+    margin: { l: 0, r: 0, b: 0, t: 0 }
+  };
+
+  const dummy = {
+    x: [0, 20], y: [0, 6], z: [0, 40],
+    mode: 'markers',
+    type: 'scatter3d',
+    marker: { size: 0.1, color: 'rgba(0,0,0,0)' },
+    hoverinfo: 'none',
+    showlegend: false
+  };
+
+  const trajectoryTrace = {
+    x: [], y: [], z: [],
+    mode: 'lines+markers',
+    type: 'scatter3d',
+    marker: { size: 3, color: 'green' },
+    line: { color: 'green' },
+    name: 'Trajectory'
+  };
+
+  Plotly.newPlot('plot', [dummy, trajectoryTrace], layout);
+
+  function lockView() {
+    const camera = plotDiv._fullLayout.scene._scene.getCamera();
+    layout.scene.camera = camera;
+    layout.dragmode = false;
+    viewLocked = true;
+    Plotly.react('plot', [dummy, { ...trajectoryTrace, x, y, z }], layout);
+  }
+
+  plotDiv.addEventListener('mousedown', (e) => {
+    if (!viewLocked) return;
+    drawing = true;
+  });
+
+  plotDiv.addEventListener('mouseup', () => {
+    drawing = false;
+  });
+
+  plotDiv.addEventListener('mousemove', (e) => {
+    if (!drawing || !viewLocked) return;
+
+    const bounds = plotDiv.getBoundingClientRect();
+    const xPix = e.clientX - bounds.left;
+    const yPix = e.clientY - bounds.top;
+
+    const xVal = (xPix / bounds.width) * 20;  // Width (X)
+    const yVal = 6 - (yPix / bounds.height) * 6; // Height (Y, inverted)
+    const zVal = 20; // Fixed Z-depth for drawing
+
+    x.push(xVal);
+    y.push(yVal);
+    z.push(zVal);
+
+    updatePlot();
+  });
+
+  function updatePlot() {
+    Plotly.react('plot', [
+      dummy,
+      { ...trajectoryTrace, x, y, z }
+    ], layout);
+  }
+
+  function clearPlot() {
+    x = []; y = []; z = [];
+    updatePlot();
+  }
+
+  function downloadPlot(format = 'png') {
+    Plotly.downloadImage(plotDiv, {
+      format: format,
+      filename: '3d_trajectory',
+      width: 1000,
+      height: 800
+    });
+  }
+</script>
+
+</body>
+</html>

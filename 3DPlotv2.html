@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -101,5 +101,227 @@
       });
     }
   </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Trajectory Drawer</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; text-align: center; }
+    #plot { width: 100vw; height: 90vh; cursor: crosshair; }
+    #controls { margin: 10px; }
+    button { margin: 0 5px; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+
+<h2>Draw a 3D Trajectory</h2>
+<div id="plot"></div>
+<div id="controls">
+  <button onclick="clearPlot()">Clear</button>
+  <button onclick="lockView()">Fix Orientation & Enable Drawing</button>
+  <button onclick="downloadPlot('png')">Save as PNG</button>
+  <button onclick="downloadPlot('svg')">Save as SVG</button>
+</div>
+
+<!-- <script>
+  let x = [], y = [], z = [];
+  let drawing = false;
+  let lastPoint = null;
+
+  const plotDiv = document.getElementById('plot');
+
+  const layout = {
+    scene: {
+      xaxis: { title: 'X (Court Width)', range: [0, 20] },
+      yaxis: { title: 'Y (Court Height)', range: [0, 6] },
+      zaxis: { title: 'Z (Court Depth)', range: [0, 40] },
+      camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+    },
+    margin: { l: 0, r: 0, b: 0, t: 0 },
+    dragmode: 'orbit'
+  };
+
+  const dummy = {
+    x: [0, 20], y: [0, 6], z: [0, 40],
+    mode: 'markers',
+    type: 'scatter3d',
+    marker: { size: 0.1, color: 'rgba(0,0,0,0)' },
+    hoverinfo: 'none',
+    showlegend: false
+  };
+
+  const trajectoryTrace = {
+    x: [], y: [], z: [],
+    mode: 'lines+markers',
+    type: 'scatter3d',
+    marker: { size: 4, color: 'green' },
+    line: { color: 'green' },
+    name: 'Trajectory'
+  };
+
+  Plotly.newPlot('plot', [dummy, trajectoryTrace], layout);
+
+  function updatePlot() {
+    const updatedTrace = {
+      ...trajectoryTrace,
+      x, y, z
+    };
+    Plotly.react('plot', [dummy, updatedTrace], layout);
+  }
+
+  function clearPlot() {
+    x = []; y = []; z = [];
+    updatePlot();
+  }
+
+  function lockView() {
+    // Lock the camera and disable rotation
+    const scene = plotDiv._fullLayout.scene._scene;
+    const camera = scene.getCamera();
+    layout.scene.camera = camera;
+    layout.dragmode = false;
+    Plotly.react('plot', [dummy, { ...trajectoryTrace, x, y, z }], layout);
+
+    // Enable drawing
+    enableDraw();
+  }
+
+  function enableDraw() {
+    // Attach to the SVG overlay inside the plot
+    const svg = plotDiv.querySelector('svg');
+    if (!svg) return;
+
+    // Remove previous listeners to avoid duplicates
+    svg.onmousedown = null;
+    svg.onmouseup = null;
+    svg.onmouseleave = null;
+    svg.onmousemove = null;
+
+    svg.onmousedown = (e) => {
+      drawing = true;
+      lastPoint = null;
+    };
+    svg.onmouseup = (e) => {
+      drawing = false;
+      lastPoint = null;
+    };
+    svg.onmouseleave = (e) => {
+      drawing = false;
+      lastPoint = null;
+    };
+    svg.onmousemove = (e) => {
+      if (!drawing) return;
+
+      const bounds = svg.getBoundingClientRect();
+      const xPix = e.clientX - bounds.left;
+      const yPix = e.clientY - bounds.top;
+
+      // Project to 3D space (approximate mapping from screen to world)
+      const xVal = (xPix / bounds.width) * 20;
+      const yVal = 6 - (yPix / bounds.height) * 6;
+      const zVal = 40 - (xPix / bounds.width) * 40;
+
+      // Only add if moved enough (to avoid too many points)
+      if (!lastPoint || Math.abs(xVal - lastPoint[0]) > 0.05 || Math.abs(yVal - lastPoint[1]) > 0.05) {
+        x.push(xVal);
+        y.push(yVal);
+        z.push(zVal);
+        lastPoint = [xVal, yVal, zVal];
+        updatePlot();
+      }
+    };
+  }
+
+  function downloadPlot(format = 'png') {
+    Plotly.downloadImage(plotDiv, {
+      format: format,
+      filename: '3d_trajectory',
+      width: 1000,
+      height: 800
+    });
+  }
+</script> -->
+
+<script>
+  let x = [], y = [], z = [];
+
+  const plotDiv = document.getElementById('plot');
+
+  const layout = {
+    scene: {
+      xaxis: { title: 'X (Court Width)', range: [0, 20] },
+      yaxis: { title: 'Y (Court Height)', range: [0, 6] },
+      zaxis: { title: 'Z (Court Depth)', range: [0, 40] },
+      camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+    },
+    margin: { l: 0, r: 0, b: 0, t: 0 },
+    dragmode: 'orbit'
+  };
+
+  const dummy = {
+    x: [0, 20], y: [0, 6], z: [0, 40],
+    mode: 'markers',
+    type: 'scatter3d',
+    marker: { size: 0.1, color: 'rgba(0,0,0,0)' },
+    hoverinfo: 'none',
+    showlegend: false
+  };
+
+  const trajectoryTrace = {
+    x: [], y: [], z: [],
+    mode: 'lines+markers',
+    type: 'scatter3d',
+    marker: { size: 4, color: 'green' },
+    line: { color: 'green' },
+    name: 'Trajectory'
+  };
+
+  Plotly.newPlot('plot', [dummy, trajectoryTrace], layout);
+
+  function updatePlot() {
+    const updatedTrace = {
+      ...trajectoryTrace,
+      x, y, z
+    };
+    Plotly.react('plot', [dummy, updatedTrace], layout);
+  }
+
+  function clearPlot() {
+    x = []; y = []; z = [];
+    updatePlot();
+  }
+
+  function lockView() {
+    const scene = plotDiv._fullLayout.scene._scene;
+    const camera = scene.getCamera();
+    layout.scene.camera = camera;
+    layout.dragmode = false;
+    updatePlot();
+  }
+
+  function downloadPlot(format = 'png') {
+    Plotly.downloadImage(plotDiv, {
+      format: format,
+      filename: '3d_trajectory',
+      width: 1000,
+      height: 800
+    });
+  }
+
+  // Add points by clicking on the plot
+  plotDiv.on('plotly_click', function(data) {
+    const pt = data.points[0];
+    if (!pt) return;
+    x.push(pt.x);
+    y.push(pt.y);
+    z.push(pt.z);
+    updatePlot();
+  });
+</script>
 </body>
 </html>

@@ -1,0 +1,1713 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Plot Creator</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 300px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            padding: 8px;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .button-group button {
+            flex: 1;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .axis-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+        
+        .axis-controls input {
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="controls">
+            <h3 style="margin-top: 0;">3D Plot Creator</h3>
+            
+            <div class="control-group">
+                <label>Mode:</label>
+                <select id="mode">
+                    <option value="draw">Draw Points</option>
+                    <option value="line">Draw Line</option>
+                    <option value="bounce">Ball Bounce</option>
+                    <option value="view">View Only</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Show Axes:</label>
+                <input type="checkbox" id="showAxes" checked>
+            </div>
+            
+            <div class="control-group">
+                <label>Axis Limits:</label>
+                <div class="axis-controls">
+                    <input type="number" id="xLimit" placeholder="X" value="10">
+                    <input type="number" id="yLimit" placeholder="Y" value="10">
+                    <input type="number" id="zLimit" placeholder="Z" value="10">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>Axis Labels:</label>
+                <div class="axis-controls">
+                    <input type="text" id="xLabel" placeholder="X Label" value="X">
+                    <input type="text" id="yLabel" placeholder="Y Label" value="Y">
+                    <input type="text" id="zLabel" placeholder="Z Label" value="Z">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>Drawing Depth (Z):</label>
+                <input type="range" id="drawingDepth" min="-10" max="10" value="0" step="0.5">
+                <span id="depthValue">0</span>
+            </div>
+            
+            <div class="control-group">
+                <label>Point Size:</label>
+                <input type="range" id="pointSize" min="0.1" max="2" value="0.5" step="0.1">
+            </div>
+            
+            <div class="control-group">
+                <div class="button-group">
+                    <button onclick="clearPlot()">Clear</button>
+                    <button onclick="undoLast()">Undo</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <button onclick="exportPlot()">Export as Image</button>
+                <button onclick="exportData()">Export Data (JSON)</button>
+            </div>
+            
+            <div class="control-group" id="bounceControls" style="display: none;">
+                <label>Gravity:</label>
+                <input type="range" id="gravity" min="0" max="20" value="9.8" step="0.1">
+                <label>Bounciness:</label>
+                <input type="range" id="bounciness" min="0" max="1" value="0.7" step="0.05">
+                <button onclick="startBounce()">Start Bounce</button>
+            </div>
+        </div>
+        
+        <div id="info">
+            <div>Controls: Left click - Draw | Right drag - Rotate | Scroll - Zoom</div>
+            <div id="coordinates">Position: (0, 0, 0)</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let gridHelper, axesHelper;
+        let points = [];
+        let lines = [];
+        let balls = [];
+        let currentLine = null;
+        let isDrawing = false;
+        let raycaster, mouse;
+        let drawingPlane;
+        let pointsGroup, linesGroup;
+        
+        // Initialize Three.js scene
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(15, 15, 15);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            directionalLight.position.set(10, 10, 10);
+            scene.add(directionalLight);
+            
+            // Groups for organization
+            pointsGroup = new THREE.Group();
+            linesGroup = new THREE.Group();
+            scene.add(pointsGroup);
+            scene.add(linesGroup);
+            
+            // Raycaster for mouse interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Drawing plane (invisible)
+            const planeGeometry = new THREE.PlaneGeometry(100, 100);
+            const planeMaterial = new THREE.MeshBasicMaterial({ 
+                visible: false,
+                side: THREE.DoubleSide 
+            });
+            drawingPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+            scene.add(drawingPlane);
+            
+            // Initialize axes
+            updateAxes();
+            
+            // Event listeners
+            renderer.domElement.addEventListener('click', onMouseClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('resize', onWindowResize);
+            
+            // Control panel listeners
+            document.getElementById('mode').addEventListener('change', onModeChange);
+            document.getElementById('showAxes').addEventListener('change', updateAxes);
+            document.getElementById('xLimit').addEventListener('change', updateAxes);
+            document.getElementById('yLimit').addEventListener('change', updateAxes);
+            document.getElementById('zLimit').addEventListener('change', updateAxes);
+            document.getElementById('drawingDepth').addEventListener('input', updateDrawingDepth);
+            
+            animate();
+        }
+        
+        // Update axes based on settings
+        function updateAxes() {
+            // Remove old helpers
+            if (gridHelper) scene.remove(gridHelper);
+            if (axesHelper) scene.remove(axesHelper);
+            
+            const showAxes = document.getElementById('showAxes').checked;
+            if (!showAxes) return;
+            
+            const xLimit = parseFloat(document.getElementById('xLimit').value) || 10;
+            const yLimit = parseFloat(document.getElementById('yLimit').value) || 10;
+            const zLimit = parseFloat(document.getElementById('zLimit').value) || 10;
+            
+            // Grid
+            gridHelper = new THREE.GridHelper(xLimit * 2, 20, 0x888888, 0xdddddd);
+            scene.add(gridHelper);
+            
+            // Custom axes with labels
+            createCustomAxes(xLimit, yLimit, zLimit);
+        }
+        
+        // Create custom axes with labels
+        function createCustomAxes(xLimit, yLimit, zLimit) {
+            const axes = new THREE.Group();
+            
+            // X axis (red)
+            const xGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-xLimit, 0, 0),
+                new THREE.Vector3(xLimit, 0, 0)
+            ]);
+            const xLine = new THREE.Line(xGeometry, new THREE.LineBasicMaterial({ color: 0xff0000 }));
+            axes.add(xLine);
+            
+            // Y axis (green)
+            const yGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -yLimit, 0),
+                new THREE.Vector3(0, yLimit, 0)
+            ]);
+            const yLine = new THREE.Line(yGeometry, new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+            axes.add(yLine);
+            
+            // Z axis (blue)
+            const zGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, -zLimit),
+                new THREE.Vector3(0, 0, zLimit)
+            ]);
+            const zLine = new THREE.Line(zGeometry, new THREE.LineBasicMaterial({ color: 0x0000ff }));
+            axes.add(zLine);
+            
+            scene.add(axes);
+            axesHelper = axes;
+        }
+        
+        // Mouse event handlers
+        function onMouseClick(event) {
+            if (event.button !== 0) return; // Only left click
+            
+            const mode = document.getElementById('mode').value;
+            if (mode === 'view') return;
+            
+            updateMousePosition(event);
+            
+            if (mode === 'draw') {
+                addPoint();
+            } else if (mode === 'bounce') {
+                addBounceBall();
+            }
+        }
+        
+        function onMouseDown(event) {
+            if (event.button !== 0) return;
+            
+            const mode = document.getElementById('mode').value;
+            if (mode === 'line') {
+                isDrawing = true;
+                currentLine = [];
+            }
+        }
+        
+        function onMouseUp(event) {
+            if (event.button !== 0) return;
+            
+            const mode = document.getElementById('mode').value;
+            if (mode === 'line' && isDrawing) {
+                isDrawing = false;
+                if (currentLine && currentLine.length > 1) {
+                    createLineFromPoints(currentLine);
+                }
+                currentLine = null;
+            }
+        }
+        
+        function onMouseMove(event) {
+            updateMousePosition(event);
+            
+            // Update coordinate display
+            const intersects = raycaster.intersectObject(drawingPlane);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                document.getElementById('coordinates').textContent = 
+                    `Position: (${point.x.toFixed(2)}, ${point.y.toFixed(2)}, ${point.z.toFixed(2)})`;
+            }
+            
+            // Line drawing
+            if (isDrawing && currentLine !== null) {
+                const intersects = raycaster.intersectObject(drawingPlane);
+                if (intersects.length > 0) {
+                    currentLine.push(intersects[0].point.clone());
+                    if (currentLine.length > 1) {
+                        updateTemporaryLine();
+                    }
+                }
+            }
+        }
+        
+        function updateMousePosition(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+        }
+        
+        function updateDrawingDepth() {
+            const depth = parseFloat(document.getElementById('drawingDepth').value);
+            document.getElementById('depthValue').textContent = depth.toFixed(1);
+            
+            // Update drawing plane position
+            drawingPlane.position.z = depth;
+            
+            // Rotate plane to face camera
+            drawingPlane.lookAt(camera.position);
+        }
+        
+        // Add point to scene
+        function addPoint() {
+            const intersects = raycaster.intersectObject(drawingPlane);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                const size = parseFloat(document.getElementById('pointSize').value);
+                
+                const geometry = new THREE.SphereGeometry(size, 16, 16);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: new THREE.Color(Math.random(), Math.random(), Math.random())
+                });
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.copy(point);
+                
+                pointsGroup.add(sphere);
+                points.push({
+                    mesh: sphere,
+                    position: point.clone()
+                });
+            }
+        }
+        
+        // Create line from points
+        function createLineFromPoints(linePoints) {
+            const geometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+            const material = new THREE.LineBasicMaterial({ 
+                color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+                linewidth: 2
+            });
+            const line = new THREE.Line(geometry, material);
+            
+            linesGroup.add(line);
+            lines.push({
+                mesh: line,
+                points: linePoints.map(p => p.clone())
+            });
+        }
+        
+        // Update temporary line while drawing
+        let tempLine = null;
+        function updateTemporaryLine() {
+            if (tempLine) {
+                linesGroup.remove(tempLine);
+            }
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(currentLine);
+            const material = new THREE.LineBasicMaterial({ 
+                color: 0x666666,
+                linewidth: 1,
+                opacity: 0.6,
+                transparent: true
+            });
+            tempLine = new THREE.Line(geometry, material);
+            linesGroup.add(tempLine);
+        }
+        
+        // Ball bounce physics
+        function addBounceBall() {
+            const intersects = raycaster.intersectObject(drawingPlane);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                
+                const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0xff0000,
+                    emissive: 0x440000
+                });
+                                const ball = new THREE.Mesh(geometry, material);
+                ball.position.copy(point);
+                
+                scene.add(ball);
+                balls.push({
+                    mesh: ball,
+                    velocity: new THREE.Vector3(0, 0, 0),
+                    position: point.clone()
+                });
+            }
+        }
+        
+        // Start ball bounce animation
+        function startBounce() {
+            const gravity = parseFloat(document.getElementById('gravity').value);
+            const bounciness = parseFloat(document.getElementById('bounciness').value);
+            
+            balls.forEach(ball => {
+                ball.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 5,
+                    0,
+                    (Math.random() - 0.5) * 5
+                );
+            });
+            
+            animateBounce(gravity, bounciness);
+        }
+        
+        // Animate bouncing balls
+        function animateBounce(gravity, bounciness) {
+            const deltaTime = 0.016; // 60 FPS
+            
+            balls.forEach(ball => {
+                // Apply gravity
+                ball.velocity.y -= gravity * deltaTime;
+                
+                // Update position
+                ball.position.add(ball.velocity.clone().multiplyScalar(deltaTime));
+                ball.mesh.position.copy(ball.position);
+                
+                // Ground collision
+                if (ball.position.y <= 0.5) {
+                    ball.position.y = 0.5;
+                    ball.velocity.y = -ball.velocity.y * bounciness;
+                    
+                    // Add some friction
+                    ball.velocity.x *= 0.95;
+                    ball.velocity.z *= 0.95;
+                }
+                
+                // Boundary collisions
+                const xLimit = parseFloat(document.getElementById('xLimit').value) || 10;
+                const zLimit = parseFloat(document.getElementById('zLimit').value) || 10;
+                
+                if (Math.abs(ball.position.x) >= xLimit) {
+                    ball.velocity.x = -ball.velocity.x * bounciness;
+                    ball.position.x = Math.sign(ball.position.x) * xLimit;
+                }
+                
+                if (Math.abs(ball.position.z) >= zLimit) {
+                    ball.velocity.z = -ball.velocity.z * bounciness;
+                    ball.position.z = Math.sign(ball.position.z) * zLimit;
+                }
+                
+                // Add trail
+                if (Math.random() < 0.1) { // Occasional trail points
+                    const trailGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                    const trailMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0xff0000,
+                        opacity: 0.3,
+                        transparent: true
+                    });
+                    const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+                    trail.position.copy(ball.position);
+                    scene.add(trail);
+                    
+                    // Fade out trail
+                    setTimeout(() => {
+                        scene.remove(trail);
+                    }, 2000);
+                }
+            });
+            
+            // Continue animation if balls are moving
+            const isMoving = balls.some(ball => 
+                Math.abs(ball.velocity.x) > 0.01 || 
+                Math.abs(ball.velocity.y) > 0.01 || 
+                Math.abs(ball.velocity.z) > 0.01
+            );
+            
+            if (isMoving) {
+                requestAnimationFrame(() => animateBounce(gravity, bounciness));
+            }
+        }
+        
+        // Clear all objects
+        function clearPlot() {
+            // Clear points
+            pointsGroup.clear();
+            points = [];
+            
+            // Clear lines
+            linesGroup.clear();
+            lines = [];
+            
+            // Clear balls
+            balls.forEach(ball => scene.remove(ball.mesh));
+            balls = [];
+            
+            // Clear any trails
+            const trails = [];
+            scene.traverse(child => {
+                if (child.material && child.material.opacity === 0.3) {
+                    trails.push(child);
+                }
+            });
+            trails.forEach(trail => scene.remove(trail));
+        }
+        
+        // Undo last action
+        function undoLast() {
+            if (points.length > 0) {
+                const lastPoint = points.pop();
+                pointsGroup.remove(lastPoint.mesh);
+            } else if (lines.length > 0) {
+                const lastLine = lines.pop();
+                linesGroup.remove(lastLine.mesh);
+            } else if (balls.length > 0) {
+                const lastBall = balls.pop();
+                scene.remove(lastBall.mesh);
+            }
+        }
+        
+        // Export functions
+        function exportPlot() {
+            // Store current background
+            const originalBackground = scene.background;
+            scene.background = new THREE.Color(0xffffff);
+            
+            // Render
+            renderer.render(scene, camera);
+            
+            // Convert to image
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = 'plot_' + new Date().getTime() + '.png';
+            link.href = dataURL;
+            link.click();
+            
+            // Restore background
+            scene.background = originalBackground;
+        }
+        
+        function exportData() {
+            const data = {
+                points: points.map(p => ({
+                    x: p.position.x,
+                    y: p.position.y,
+                    z: p.position.z
+                })),
+                lines: lines.map(l => ({
+                    points: l.points.map(p => ({
+                        x: p.x,
+                        y: p.y,
+                        z: p.z
+                    }))
+                })),
+                balls: balls.map(b => ({
+                    x: b.position.x,
+                    y: b.position.y,
+                    z: b.position.z,
+                    velocity: {
+                        x: b.velocity.x,
+                        y: b.velocity.y,
+                        z: b.velocity.z
+                    }
+                })),
+                settings: {
+                    xLimit: document.getElementById('xLimit').value,
+                    yLimit: document.getElementById('yLimit').value,
+                    zLimit: document.getElementById('zLimit').value,
+                    xLabel: document.getElementById('xLabel').value,
+                    yLabel: document.getElementById('yLabel').value,
+                    zLabel: document.getElementById('zLabel').value
+                }
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.download = 'plot_data_' + new Date().getTime() + '.json';
+            link.href = url;
+            link.click();
+        }
+        
+        // Mode change handler
+        function onModeChange() {
+            const mode = document.getElementById('mode').value;
+            const bounceControls = document.getElementById('bounceControls');
+            
+            if (mode === 'bounce') {
+                bounceControls.style.display = 'block';
+            } else {
+                bounceControls.style.display = 'none';
+            }
+            
+            // Stop drawing if switching modes
+            isDrawing = false;
+            currentLine = null;
+            if (tempLine) {
+                linesGroup.remove(tempLine);
+                tempLine = null;
+            }
+        }
+        
+        // Window resize handler
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Room Plot Creator</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 320px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            padding: 8px;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button.locked {
+            background: #f44336;
+        }
+        
+        button.locked:hover {
+            background: #da190b;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .button-group button {
+            flex: 1;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .room-dimensions {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+        
+        .room-dimensions input {
+            width: auto;
+        }
+        
+        .axis-label {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            margin-top: -5px;
+        }
+        
+        #drawingPlaneSelector {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="controls">
+            <h3 style="margin-top: 0;">3D Room Trajectory Plotter</h3>
+            
+            <div class="control-group">
+                <label>Mode:</label>
+                <select id="mode">
+                    <option value="draw">Draw Trajectory</option>
+                    <option value="points">Place Points</option>
+                    <option value="bounce">Ball Bounce</option>
+                    <option value="view">View Only</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Room Dimensions (meters):</label>
+                <div class="room-dimensions">
+                    <div>
+                        <input type="number" id="roomWidth" placeholder="Width" value="5" step="0.5">
+                        <div class="axis-label">Width (X)</div>
+                    </div>
+                    <div>
+                        <input type="number" id="roomHeight" placeholder="Height" value="3" step="0.5">
+                        <div class="axis-label">Height (Y)</div>
+                    </div>
+                    <div>
+                        <input type="number" id="roomLength" placeholder="Length" value="8" step="0.5">
+                        <div class="axis-label">Length (Z)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>Axis Units:</label>
+                <input type="text" id="unitLabel" value="meters" placeholder="e.g., meters, feet">
+            </div>
+            
+            <div class="control-group">
+                <label>Show:</label>
+                <label style="font-weight: normal;">
+                    <input type="checkbox" id="showRoom" checked> Room Wireframe
+                </label>
+                <label style="font-weight: normal;">
+                    <input type="checkbox" id="showGrid" checked> Floor Grid
+                </label>
+                <label style="font-weight: normal;">
+                    <input type="checkbox" id="showAxes" checked> Axes & Labels
+                </label>
+            </div>
+            
+            <div class="control-group">
+                <label>Drawing Plane:</label>
+                <div id="drawingPlaneSelector">
+                    <button onclick="setDrawingPlane('xy')" class="plane-btn">X-Y (Front)</button>
+                    <button onclick="setDrawingPlane('xz')" class="plane-btn">X-Z (Top)</button>
+                    <button onclick="setDrawingPlane('yz')" class="plane-btn">Y-Z (Side)</button>
+                </div>
+                <label>Drawing Distance:</label>
+                <input type="range" id="drawingDistance" min="0" max="10" value="5" step="0.1">
+                <span id="distanceValue">5.0</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="lockViewBtn" onclick="toggleViewLock()">🔓 Lock View</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Line Thickness:</label>
+                <input type="range" id="lineWidth" min="1" max="10" value="3" step="1">
+            </div>
+            
+            <div class="control-group">
+                <div class="button-group">
+                    <button onclick="clearPlot()">Clear All</button>
+                    <button onclick="undoLast()">Undo</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <button onclick="exportPlot()">Export as Image</button>
+                <button onclick="exportData()">Export Data (JSON)</button>
+                <button onclick="setPresetView('isometric')">Isometric View</button>
+            </div>
+            
+            <div class="control-group" id="bounceControls" style="display: none;">
+                <label>Gravity (m/s²):</label>
+                <input type="range" id="gravity" min="0" max="20" value="9.8" step="0.1">
+                <label>Bounciness:</label>
+                <input type="range" id="bounciness" min="0" max="1" value="0.7" step="0.05">
+                <button onclick="startBounce()">Start Simulation</button>
+            </div>
+        </div>
+        
+        <div id="info">
+            <div>Controls: Left click - Draw | Right drag - Rotate | Scroll - Zoom</div>
+            <div id="coordinates">Position: (0.00, 0.00, 0.00) m</div>
+            <div id="viewStatus">View: Unlocked</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let room, gridHelper, axesGroup;
+        let trajectories = [];
+        let points = [];
+        let balls = [];
+        let currentTrajectory = null;
+        let isDrawing = false;
+        let viewLocked = false;
+        let raycaster, mouse;
+        let drawingPlane, currentPlaneType = 'xy';
+        let axisLabels = [];
+        
+        // Initialize Three.js scene
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf5f5f5);
+            scene.fog = new THREE.Fog(0xf5f5f5, 10, 50);
+            
+            // Camera setup - positioned to view room nicely
+            camera = new THREE.PerspectiveCamera(
+                60,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(10, 8, 15);
+            camera.lookAt(0, 1.5, 0);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 1.5, 0);
+            controls.update();
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.near = 0.1;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -10;
+            directionalLight.shadow.camera.right = 10;
+            directionalLight.shadow.camera.top = 10;
+            directionalLight.shadow.camera.bottom = -10;
+            scene.add(directionalLight);
+            
+            // Raycaster for mouse interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Create drawing plane
+            createDrawingPlane();
+            
+            // Initialize room
+            updateRoom();
+            
+            // Event listeners
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('resize', onWindowResize);
+            
+            // Control panel listeners
+            document.getElementById('mode').addEventListener('change', onModeChange);
+            document.getElementById('roomWidth').addEventListener('change', updateRoom);
+            document.getElementById('roomHeight').addEventListener('change', updateRoom);
+            document.getElementById('roomLength').addEventListener('change', updateRoom);
+            document.getElementById('showRoom').addEventListener('change', updateRoom);
+            document.getElementById('showGrid').addEventListener('change', updateRoom);
+            document.getElementById('showAxes').addEventListener('change', updateRoom);
+            document.getElementById('drawingDistance').addEventListener('input', updateDrawingDistance);
+            
+            animate();
+        }
+        
+        // Create room wireframe and axes
+        function updateRoom() {
+            // Clear old room elements
+            if (room) scene.remove(room);
+            if (gridHelper) scene.remove(gridHelper);
+            if (axesGroup) scene.remove(axesGroup);
+            axisLabels.forEach(label => scene.remove(label));
+            axisLabels = [];
+            
+            const width = parseFloat(document.getElementById('roomWidth').value) || 5;
+            const height = parseFloat(document.getElementById('roomHeight').value) || 3;
+            const length = parseFloat(document.getElementById('roomLength').value) || 8;
+            const unit = document.getElementById('unitLabel').value || 'meters';
+            
+            // Create room group
+            room = new THREE.Group();
+            
+            if (document.getElementById('showRoom').checked) {
+                // Room wireframe
+                const roomGeometry = new THREE.BoxGeometry(width, height, length);
+                const edges = new THREE.EdgesGeometry(roomGeometry);
+                const roomWireframe = new THREE.LineSegments(
+                    edges,
+                    new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 2 })
+                );
+                roomWireframe.position.y = height / 2;
+                room.add(roomWireframe);
+                
+                // Semi-transparent walls for better depth perception
+                const wallMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xe0e0e0,
+                    transparent: true,
+                    opacity: 0.1,
+                    side: THREE.DoubleSide
+                });
+                
+                // Floor
+                const floorGeometry = new THREE.PlaneGeometry(width, length);
+                const floorMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xcccccc,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                room.add(floor);
+            }
+            
+            scene.add(room);
+            
+            // Grid on floor
+            if (document.getElementById('showGrid').checked) {
+                gridHelper = new THREE.GridHelper(
+                    Math.max(width, length),
+                    20,
+                    0x888888,
+                    0xdddddd
+                );
+                scene.add(gridHelper);
+            }
+            
+            // Axes and labels
+            if (document.getElementById('showAxes').checked) {
+                createAxesWithLabels(width, height, length, unit);
+            }
+            
+            // Update camera controls target
+            controls.target.set(0, height / 2, 0);
+            controls.update();
+        }
+        
+        // Create axes with labels
+        function createAxesWithLabels(width, height, length, unit) {
+            axesGroup = new THREE.Group();
+            
+            // Custom axes at origin (corner of room)
+            const origin = new THREE.Vector3(-width/2, 0, -length/2);
+            
+            // X axis (red) - Width
+            const xGeometry = new THREE.BufferGeometry().setFromPoints([
+                origin,
+                new THREE.Vector3(width/2, 0, -length/2)
+            ]);
+            const xAxis = new THREE.Line(xGeometry, new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 3 }));
+            axesGroup.add(xAxis);
+            
+            // Y axis (green) - Height
+            const yGeometry = new THREE.BufferGeometry().setFromPoints([
+                origin,
+                new THREE.Vector3(-width/2, height, -length/2)
+            ]);
+                        const yAxis = new THREE.Line(yGeometry, new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 }));
+            axesGroup.add(yAxis);
+            
+            // Z axis (blue) - Length
+            const zGeometry = new THREE.BufferGeometry().setFromPoints([
+                origin,
+                new THREE.Vector3(-width/2, 0, length/2)
+            ]);
+            const zAxis = new THREE.Line(zGeometry, new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 3 }));
+            axesGroup.add(zAxis);
+            
+            scene.add(axesGroup);
+            
+            // Create text labels
+            const loader = new THREE.FontLoader();
+            
+            // For now, use sprites for labels (simpler than loading fonts)
+            createAxisLabel(`X (Width): ${width} ${unit}`, new THREE.Vector3(0, -0.5, -length/2), 0xff0000);
+            createAxisLabel(`Y (Height): ${height} ${unit}`, new THREE.Vector3(-width/2 - 1, height/2, -length/2), 0x00ff00);
+            createAxisLabel(`Z (Length): ${length} ${unit}`, new THREE.Vector3(-width/2, -0.5, 0), 0x0000ff);
+            
+            // Add measurement markers
+            addMeasurementMarkers(width, height, length, origin);
+        }
+        
+        // Create axis label using sprite
+        function createAxisLabel(text, position, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'Bold 24px Arial';
+            context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, canvas.width/2, canvas.height/2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            
+            sprite.position.copy(position);
+            sprite.scale.set(2, 0.5, 1);
+            
+            scene.add(sprite);
+            axisLabels.push(sprite);
+        }
+        
+        // Add measurement markers along axes
+        function addMeasurementMarkers(width, height, length, origin) {
+            const markerMaterial = new THREE.LineBasicMaterial({ color: 0x666666 });
+            const markerSize = 0.1;
+            
+            // X-axis markers
+            for (let i = 1; i <= Math.floor(width); i++) {
+                const markerGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(origin.x + i, origin.y - markerSize, origin.z),
+                    new THREE.Vector3(origin.x + i, origin.y + markerSize, origin.z)
+                ]);
+                const marker = new THREE.Line(markerGeometry, markerMaterial);
+                axesGroup.add(marker);
+            }
+            
+            // Y-axis markers
+            for (let i = 1; i <= Math.floor(height); i++) {
+                const markerGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(origin.x - markerSize, origin.y + i, origin.z),
+                    new THREE.Vector3(origin.x + markerSize, origin.y + i, origin.z)
+                ]);
+                const marker = new THREE.Line(markerGeometry, markerMaterial);
+                axesGroup.add(marker);
+            }
+            
+            // Z-axis markers
+            for (let i = 1; i <= Math.floor(length); i++) {
+                const markerGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(origin.x - markerSize, origin.y, origin.z + i),
+                    new THREE.Vector3(origin.x + markerSize, origin.y, origin.z + i)
+                ]);
+                const marker = new THREE.Line(markerGeometry, markerMaterial);
+                axesGroup.add(marker);
+            }
+        }
+        
+        // Create invisible drawing plane
+        function createDrawingPlane() {
+            const planeGeometry = new THREE.PlaneGeometry(100, 100);
+            const planeMaterial = new THREE.MeshBasicMaterial({ 
+                visible: false,
+                side: THREE.DoubleSide 
+            });
+            drawingPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+            scene.add(drawingPlane);
+            
+            updateDrawingPlane();
+        }
+        
+        // Update drawing plane orientation
+        function setDrawingPlane(type) {
+            currentPlaneType = type;
+            updateDrawingPlane();
+            
+            // Update button states
+            document.querySelectorAll('.plane-btn').forEach(btn => {
+                btn.style.background = '#4CAF50';
+            });
+            event.target.style.background = '#2196F3';
+        }
+        
+        function updateDrawingPlane() {
+            const distance = parseFloat(document.getElementById('drawingDistance').value);
+            const width = parseFloat(document.getElementById('roomWidth').value) || 5;
+            const height = parseFloat(document.getElementById('roomHeight').value) || 3;
+            const length = parseFloat(document.getElementById('roomLength').value) || 8;
+            
+            drawingPlane.rotation.set(0, 0, 0);
+            
+            switch(currentPlaneType) {
+                case 'xy': // Front/back wall
+                    drawingPlane.rotation.y = 0;
+                    drawingPlane.position.set(0, height/2, -length/2 + distance);
+                    break;
+                case 'xz': // Floor/ceiling
+                    drawingPlane.rotation.x = -Math.PI / 2;
+                    drawingPlane.position.set(0, distance, 0);
+                    break;
+                case 'yz': // Side wall
+                    drawingPlane.rotation.y = Math.PI / 2;
+                    drawingPlane.position.set(-width/2 + distance, height/2, 0);
+                    break;
+            }
+        }
+        
+        function updateDrawingDistance() {
+            const distance = parseFloat(document.getElementById('drawingDistance').value);
+            document.getElementById('distanceValue').textContent = distance.toFixed(1);
+            updateDrawingPlane();
+        }
+        
+        // Toggle view lock
+        function toggleViewLock() {
+            viewLocked = !viewLocked;
+            controls.enabled = !viewLocked;
+            
+            const btn = document.getElementById('lockViewBtn');
+            if (viewLocked) {
+                btn.textContent = '🔒 Unlock View';
+                btn.classList.add('locked');
+                document.getElementById('viewStatus').textContent = 'View: Locked';
+            } else {
+                btn.textContent = '🔓 Lock View';
+                btn.classList.remove('locked');
+                document.getElementById('viewStatus').textContent = 'View: Unlocked';
+            }
+        }
+        
+        // Mouse event handlers
+        function onMouseDown(event) {
+            if (event.button !== 0) return; // Only left click
+            
+            const mode = document.getElementById('mode').value;
+            if (mode === 'view') return;
+            
+            updateMousePosition(event);
+            
+            if (mode === 'draw') {
+                isDrawing = true;
+                currentTrajectory = [];
+                
+                const intersects = raycaster.intersectObject(drawingPlane);
+                if (intersects.length > 0) {
+                    currentTrajectory.push(intersects[0].point.clone());
+                }
+            } else if (mode === 'points') {
+                addPoint();
+            } else if (mode === 'bounce') {
+                addBounceBall();
+            }
+        }
+        
+        function onMouseMove(event) {
+            updateMousePosition(event);
+            
+            const intersects = raycaster.intersectObject(drawingPlane);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                const unit = document.getElementById('unitLabel').value || 'm';
+                
+                // Adjust coordinates to show room-relative positions
+                const width = parseFloat(document.getElementById('roomWidth').value) || 5;
+                const length = parseFloat(document.getElementById('roomLength').value) || 8;
+                
+                const relX = (point.x + width/2).toFixed(2);
+                const relY = point.y.toFixed(2);
+                const relZ = (point.z + length/2).toFixed(2);
+                
+                document.getElementById('coordinates').textContent = 
+                    `Position: (${relX}, ${relY}, ${relZ}) ${unit}`;
+            }
+            
+            if (isDrawing && currentTrajectory) {
+                const intersects = raycaster.intersectObject(drawingPlane);
+                if (intersects.length > 0) {
+                    const lastPoint = currentTrajectory[currentTrajectory.length - 1];
+                    const newPoint = intersects[0].point.clone();
+                    
+                    // Add point if it's far enough from the last point (smooth line)
+                    if (!lastPoint || lastPoint.distanceTo(newPoint) > 0.05) {
+                        currentTrajectory.push(newPoint);
+                        updateCurrentTrajectory();
+                    }
+                }
+            }
+        }
+        
+        function onMouseUp(event) {
+            if (event.button !== 0) return;
+            
+            if (isDrawing && currentTrajectory && currentTrajectory.length > 1) {
+                finalizeTragjectory();
+            }
+            
+            isDrawing = false;
+            currentTrajectory = null;
+        }
+        
+        function updateMousePosition(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+        }
+        
+        // Update trajectory while drawing
+        let tempLine = null;
+        function updateCurrentTrajectory() {
+            if (tempLine) {
+                scene.remove(tempLine);
+            }
+            
+            if (currentTrajectory.length < 2) return;
+            
+            // Create smooth curve through points
+            const curve = new THREE.CatmullRomCurve3(currentTrajectory);
+            const points = curve.getPoints(currentTrajectory.length * 5);
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ 
+                color: 0x666666,
+                linewidth: parseFloat(document.getElementById('lineWidth').value),
+                opacity: 0.6,
+                transparent: true
+            });
+            tempLine = new THREE.Line(geometry, material);
+            scene.add(tempLine);
+        }
+        
+        // Finalize trajectory
+        function finalizeTragjectory() {
+            if (tempLine) {
+                scene.remove(tempLine);
+            }
+            
+            // Create smooth curve
+            const curve = new THREE.CatmullRomCurve3(currentTrajectory);
+            const points = curve.getPoints(currentTrajectory.length * 5);
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ 
+                color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+                linewidth: parseFloat(document.getElementById('lineWidth').value)
+            });
+            
+            const trajectory = new THREE.Line(geometry, material);
+            scene.add(trajectory);
+            
+            trajectories.push({
+                mesh: trajectory,
+                points: currentTrajectory.map(p => p.clone()),
+                curve: curve
+            });
+        }
+        
+        // Add point
+        function addPoint() {
+            const intersects = raycaster.intersectObject(drawingPlane);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                
+                const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+                    emissive: 0x222222
+                });
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.copy(point);
+                sphere.castShadow = true;
+                
+                scene.add(sphere);
+                points.push({
+                    mesh: sphere,
+                    position: point.clone()
+                });
+            }
+        }
+        
+        // Add bouncing ball
+        function addBounceBall() {
+            const intersects = raycaster.intersectObject(drawingPlane);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                
+                const geometry = new THREE.SphereGeometry(0.2, 32, 32);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0xff0000,
+                    emissive: 0x440000
+                });
+                const ball = new THREE.Mesh(geometry, material);
+                ball.position.copy(point);
+                ball.castShadow = true;
+                
+                scene.add(ball);
+                balls.push({
+                    mesh: ball,
+                    velocity: new THREE.Vector3(0, 0, 0),
+                    position: point.clone()
+                });
+            }
+        }
+        
+        // Ball bounce physics
+        function startBounce() {
+            const gravity = parseFloat(document.getElementById('gravity').value);
+            const bounciness = parseFloat(document.getElementById('bounciness').value);
+            
+            balls.forEach(ball => {
+                ball.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    0,
+                    (Math.random() - 0.5) * 2
+                );
+            });
+            
+            animateBounce(gravity, bounciness);
+        }
+        
+        function animateBounce(gravity, bounciness) {
+            const deltaTime = 0.016;
+            const width = parseFloat(document.getElementById('roomWidth').value) || 5;
+            const height = parseFloat(document.getElementById('roomHeight').value) || 3;
+            const length = parseFloat(document.getElementById('roomLength').value) || 8;
+            
+            balls.forEach(ball => {
+                // Apply gravity
+                ball.velocity.y -= gravity * deltaTime;
+                
+                // Update position
+                ball.position.add(ball.velocity.clone().multiplyScalar(deltaTime));
+                ball.mesh.position.copy(ball.position);
+                
+                // Floor collision
+                if (ball.position.y <= 0.2) {
+                    ball.position.y = 0.2;
+                    ball.velocity.y = -ball.velocity.y * bounciness;
+                    ball.velocity.x *= 0.95;
+                    ball.velocity.z *= 0.95;
+                }
+                
+                // Wall collisions
+                if (Math.abs(ball.position.x) >= width/2 - 0.2) {
+                    ball.velocity.x = -ball.velocity.x * bounciness;
+                    ball.position.x = Math.sign(ball.position.x) * (width/2 - 0.2);
+                }
+                
+                if (Math.abs(ball.position.z) >= length/2 - 0.2) {
+                    ball.velocity.z = -ball.velocity.z * bounciness;
+                    ball.position.z = Math.sign(ball.position.z) * (length/2 - 0.2);
+                }
+                
+                                if (ball.position.y >= height - 0.2) {
+                    ball.velocity.y = -ball.velocity.y * bounciness;
+                    ball.position.y = height - 0.2;
+                }
+                
+                // Add trail point occasionally
+                if (Math.random() < 0.05) {
+                    const trailGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                    const trailMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0xff0000,
+                        opacity: 0.3,
+                        transparent: true
+                    });
+                    const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+                    trail.position.copy(ball.position);
+                    scene.add(trail);
+                    
+                    // Fade and remove trail
+                    setTimeout(() => {
+                        scene.remove(trail);
+                    }, 3000);
+                }
+            });
+            
+            // Continue animation if balls are still moving significantly
+            const isMoving = balls.some(ball => 
+                Math.abs(ball.velocity.x) > 0.01 || 
+                Math.abs(ball.velocity.y) > 0.01 || 
+                Math.abs(ball.velocity.z) > 0.01
+            );
+            
+            if (isMoving) {
+                requestAnimationFrame(() => animateBounce(gravity, bounciness));
+            }
+        }
+        
+        // Clear all objects
+        function clearPlot() {
+            // Clear trajectories
+            trajectories.forEach(traj => scene.remove(traj.mesh));
+            trajectories = [];
+            
+            // Clear points
+            points.forEach(point => scene.remove(point.mesh));
+            points = [];
+            
+            // Clear balls and trails
+            balls.forEach(ball => scene.remove(ball.mesh));
+            balls = [];
+            
+            // Clear trails
+            const objectsToRemove = [];
+            scene.traverse(child => {
+                if (child.material && child.material.opacity === 0.3) {
+                    objectsToRemove.push(child);
+                }
+            });
+            objectsToRemove.forEach(obj => scene.remove(obj));
+            
+            // Clear temp line
+            if (tempLine) {
+                scene.remove(tempLine);
+                tempLine = null;
+            }
+        }
+        
+        // Undo last action
+        function undoLast() {
+            if (trajectories.length > 0) {
+                const lastTrajectory = trajectories.pop();
+                scene.remove(lastTrajectory.mesh);
+            } else if (points.length > 0) {
+                const lastPoint = points.pop();
+                scene.remove(lastPoint.mesh);
+            } else if (balls.length > 0) {
+                const lastBall = balls.pop();
+                scene.remove(lastBall.mesh);
+            }
+        }
+        
+        // Export functions
+        function exportPlot() {
+            // Temporarily hide UI elements for clean export
+            const originalBackground = scene.background;
+            scene.background = new THREE.Color(0xffffff);
+            
+            // Render
+            renderer.render(scene, camera);
+            
+            // Convert to image
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `room_plot_${new Date().getTime()}.png`;
+            link.href = dataURL;
+            link.click();
+            
+            // Restore background
+            scene.background = originalBackground;
+        }
+        
+        function exportData() {
+            const unit = document.getElementById('unitLabel').value || 'meters';
+            const data = {
+                metadata: {
+                    exportDate: new Date().toISOString(),
+                    unit: unit,
+                    roomDimensions: {
+                        width: parseFloat(document.getElementById('roomWidth').value),
+                        height: parseFloat(document.getElementById('roomHeight').value),
+                        length: parseFloat(document.getElementById('roomLength').value)
+                    }
+                },
+                trajectories: trajectories.map((traj, index) => ({
+                    id: `trajectory_${index}`,
+                    points: traj.points.map(p => ({
+                        x: p.x.toFixed(3),
+                        y: p.y.toFixed(3),
+                        z: p.z.toFixed(3)
+                    })),
+                    smoothed: traj.curve.getPoints(50).map(p => ({
+                        x: p.x.toFixed(3),
+                        y: p.y.toFixed(3),
+                        z: p.z.toFixed(3)
+                    }))
+                })),
+                points: points.map((p, index) => ({
+                    id: `point_${index}`,
+                    position: {
+                        x: p.position.x.toFixed(3),
+                        y: p.position.y.toFixed(3),
+                        z: p.position.z.toFixed(3)
+                    }
+                })),
+                balls: balls.map((b, index) => ({
+                    id: `ball_${index}`,
+                    position: {
+                        x: b.position.x.toFixed(3),
+                        y: b.position.y.toFixed(3),
+                        z: b.position.z.toFixed(3)
+                    },
+                    velocity: {
+                        x: b.velocity.x.toFixed(3),
+                        y: b.velocity.y.toFixed(3),
+                        z: b.velocity.z.toFixed(3)
+                    }
+                }))
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.download = `room_plot_data_${new Date().getTime()}.json`;
+            link.href = url;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+        
+        // Set preset camera views
+        function setPresetView(viewType) {
+            const width = parseFloat(document.getElementById('roomWidth').value) || 5;
+            const height = parseFloat(document.getElementById('roomHeight').value) || 3;
+            const length = parseFloat(document.getElementById('roomLength').value) || 8;
+            
+            switch(viewType) {
+                case 'isometric':
+                    camera.position.set(width * 2, height * 2, length * 2);
+                    camera.lookAt(0, height / 2, 0);
+                    break;
+                case 'front':
+                    camera.position.set(0, height / 2, length * 1.5);
+                    camera.lookAt(0, height / 2, 0);
+                    break;
+                case 'top':
+                    camera.position.set(0, height * 2, 0);
+                    camera.lookAt(0, 0, 0);
+                    break;
+                case 'side':
+                    camera.position.set(width * 1.5, height / 2, 0);
+                    camera.lookAt(0, height / 2, 0);
+                    break;
+            }
+            
+            controls.update();
+        }
+        
+        // Mode change handler
+        function onModeChange() {
+            const mode = document.getElementById('mode').value;
+            const bounceControls = document.getElementById('bounceControls');
+            
+            if (mode === 'bounce') {
+                bounceControls.style.display = 'block';
+            } else {
+                bounceControls.style.display = 'none';
+            }
+            
+            // Stop any ongoing drawing
+            isDrawing = false;
+            currentTrajectory = null;
+            if (tempLine) {
+                scene.remove(tempLine);
+                tempLine = null;
+            }
+        }
+        
+        // Window resize handler
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls only if not locked
+            if (!viewLocked) {
+                controls.update();
+            }
+            
+            // Rotate axis labels to face camera
+            axisLabels.forEach(label => {
+                label.lookAt(camera.position);
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>
