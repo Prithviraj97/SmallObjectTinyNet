@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Trajectory Drawer</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; text-align: center; }
+    #plot { width: 100vw; height: 90vh; }
+    #controls { margin: 10px; }
+    button { margin: 0 5px; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+
+  <h2>Draw a 3D Trajectory</h2>
+  <div id="plot"></div>
+  <div id="controls">
+    <button onclick="clearPlot()">Clear</button>
+    <button onclick="lockView()">Fix Orientation</button>
+    <button onclick="downloadPlot('png')">Save as PNG</button>
+    <button onclick="downloadPlot('svg')">Save as SVG</button>
+  </div>
+
+  <script>
+    let x = [], y = [], z = [];
+    const plotDiv = document.getElementById('plot');
+
+    const layout = {
+      scene: {
+        xaxis: { title: 'X (Court Width)', range: [0, 20] },
+        yaxis: { title: 'Y (Court Height)', range: [0, 6] },
+        zaxis: { title: 'Z (Court Depth)', range: [0, 40] },
+        camera: {
+          eye: { x: 1.5, y: 1.5, z: 1.5 }
+        }
+      },
+      margin: { l: 0, r: 0, b: 0, t: 0 },
+      dragmode: 'orbit'
+    };
+
+    const dummy = {
+      x: [0, 20], y: [0, 6], z: [0, 40],
+      mode: 'markers',
+      type: 'scatter3d',
+      marker: { size: 0.1, color: 'rgba(0,0,0,0)' },
+      hoverinfo: 'none',
+      showlegend: false
+    };
+
+    const trajectoryTrace = {
+      x: [], y: [], z: [],
+      mode: 'lines+markers',
+      type: 'scatter3d',
+      marker: { size: 4, color: 'green' },
+      line: { color: 'green' },
+      name: 'Trajectory'
+    };
+
+    // Initial plot
+    Plotly.newPlot('plot', [dummy, trajectoryTrace], layout);
+
+    // Add points by clicking
+    plotDiv.on('plotly_click', function(data) {
+      const pt = data.points[0];
+      if (!pt) return;
+      x.push(pt.x);
+      y.push(pt.y);
+      z.push(pt.z);
+      updatePlot();
+    });
+
+    function updatePlot() {
+      const updatedTrace = {
+        ...trajectoryTrace,
+        x, y, z
+      };
+      Plotly.react('plot', [dummy, updatedTrace], layout);
+    }
+
+    function clearPlot() {
+      x = []; y = []; z = [];
+      updatePlot();
+    }
+
+    function lockView() {
+      const scene = plotDiv._fullLayout.scene._scene;
+      const camera = scene.getCamera();
+
+      layout.scene.camera = camera;      // lock current view
+      layout.dragmode = 'false';         // allow clicking but disable rotate/zoom
+      updatePlot();
+    }
+
+    function downloadPlot(format = 'png') {
+      Plotly.downloadImage(plotDiv, {
+        format: format,
+        filename: '3d_trajectory',
+        width: 1000,
+        height: 800
+      });
+    }
+  </script>
+</body>
+</html>

@@ -107,11 +107,14 @@
   <script>
     let x = [], y = [], z = [];
     const plotDiv = document.getElementById('plot');
+    // layout.scene.camera = {
+    // eye: { x: 1.5, y: 1.5, z: 1.5 }  // Change these values to orient the plot
+    // };
 
     const layout = {
       scene: {
         xaxis: { title: 'X (Width)', range: [0, 20] },
-        yaxis: { title: 'Y (Height)', range: [0, 6] },
+        yaxis: { title: 'Y (Height)', range: [0, 20] },
         zaxis: { title: 'Z (Depth)', range: [0, 40] }
       },
       margin: { l: 0, r: 0, b: 0, t: 0 },
@@ -120,7 +123,7 @@
 
     // Dummy points to render the plot box
     const dummy = {
-      x: [0, 20], y: [0, 6], z: [0, 40],
+      x: [0, 20], y: [0, 20], z: [0, 40],
       mode: 'markers',
       type: 'scatter3d',
       marker: { size: 0.1, color: 'rgba(0,0,0,0)' },
@@ -170,7 +173,7 @@
 
   // Update layout with fixed camera
   layout.scene.camera = camera;
-  layout.dragmode = false;
+  layout.dragmode = 'false';
 
   Plotly.react('plot', [
     dummy,
