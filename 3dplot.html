@@ -1,0 +1,168 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Trajectory Drawer</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; }
+    #plot { width: 100vw; height: 90vh; }
+    #controls { margin: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Draw a 3D Trajectory with Mouse</h2>
+  <div id="plot"></div>
+  <div id="controls">
+    <button onclick="clearPlot()">Clear</button>
+    <button onclick="downloadPlot()">Save Plot as PNG</button>
+  </div>
+
+  <script>
+    let x = [], y = [], z = [];
+    let plotDiv = document.getElementById('plot');
+
+    let layout = {
+      scene: {
+        xaxis: { title: 'X (Width)' },
+        yaxis: { title: 'Y (Height)' },
+        zaxis: { title: 'Z (Depth)' }
+      },
+      margin: { l: 0, r: 0, b: 0, t: 0 },
+    };
+
+    Plotly.newPlot('plot', [{
+      x: [], y: [], z: [],
+      mode: 'lines+markers',
+      type: 'scatter3d',
+      marker: { size: 3, color: 'green' },
+      line: { color: 'green' }
+    }], layout);
+
+    plotDiv.on('plotly_click', function(data){
+      let pt = data.points[0];
+      let xVal = pt.x + Math.random(); // slightly randomize for drawing illusion
+      let yVal = pt.y + Math.random();
+      let zVal = pt.z + Math.random();
+
+      x.push(xVal);
+      y.push(yVal);
+      z.push(zVal);
+
+      Plotly.react('plot', [{
+        x, y, z,
+        mode: 'lines+markers',
+        type: 'scatter3d',
+        marker: { size: 3, color: 'green' },
+        line: { color: 'green' }
+      }], layout);
+    });
+
+    function clearPlot() {
+      x = [], y = [], z = [];
+      Plotly.react('plot', [{
+        x, y, z,
+        mode: 'lines+markers',
+        type: 'scatter3d',
+        marker: { size: 3, color: 'green' },
+        line: { color: 'green' }
+      }], layout);
+    }
+
+    function downloadPlot() {
+      Plotly.downloadImage(plotDiv, { format: 'png', filename: '3d_trajectory' });
+    }
+  </script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Trajectory Drawer</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; }
+    #plot { width: 100vw; height: 90vh; }
+    #controls { margin: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Draw a 3D Trajectory with Mouse</h2>
+  <div id="plot"></div>
+  <!-- <div id="controls">
+    <button onclick="clearPlot()">Clear</button>
+    <button onclick="downloadPlot()">Save Plot as PNG</button>
+  </div> -->
+  <div id="controls">
+  <button onclick="clearPlot()">Clear</button>
+  <button onclick="lockView()">Fix Orientation</button>
+  <button onclick="downloadPlot('png')">Save as PNG</button>
+  <button onclick="downloadPlot('svg')">Save as SVG</button>
+</div>
+
+
+  <script>
+    let x = [], y = [], z = [];
+    const plotDiv = document.getElementById('plot');
+
+    const layout = {
+      scene: {
+        xaxis: { title: 'X (Width)', range: [0, 20] },
+        yaxis: { title: 'Y (Height)', range: [0, 6] },
+        zaxis: { title: 'Z (Depth)', range: [0, 40] }
+      },
+      margin: { l: 0, r: 0, b: 0, t: 0 },
+      dragmode: 'orbit'
+    };
+
+    // Dummy points to render the plot box
+    const dummy = {
+      x: [0, 20], y: [0, 6], z: [0, 40],
+      mode: 'markers',
+      type: 'scatter3d',
+      marker: { size: 0.1, color: 'rgba(0,0,0,0)' },
+      hoverinfo: 'none',
+      showlegend: false
+    };
+
+    Plotly.newPlot('plot', [dummy], layout);
+
+    plotDiv.on('plotly_click', function(data) {
+      const pt = data.points[0];
+      if (!pt) return;
+
+      x.push(pt.x);
+      y.push(pt.y);
+      z.push(pt.z);
+
+      updatePlot();
+    });
+
+    function updatePlot() {
+      Plotly.react('plot', [
+        dummy,
+        {
+          x, y, z,
+          mode: 'lines+markers',
+          type: 'scatter3d',
+          marker: { size: 4, color: 'green' },
+          line: { color: 'green' },
+          name: 'Trajectory'
+        }
+      ], layout);
+    }
+
+    function clearPlot() {
+      x = []; y = []; z = [];
+      updatePlot();
+    }
+
+    function downloadPlot() {
+      Plotly.downloadImage(plotDiv, { format: 'png', filename: '3d_trajectory' });
+    }
+  </script>
+</body>
+</html>
